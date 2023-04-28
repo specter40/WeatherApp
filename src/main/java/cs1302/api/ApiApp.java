@@ -8,11 +8,47 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.scene.layout.HBox;
+import javafx.scene.control.Button;
+import javafx.scene.layout.Priority;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Label;
+
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.net.http.HttpRequest;
+import java.nio.charset.StandardCharsets;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 
 /**
  * REPLACE WITH NON-SHOUTING DESCRIPTION OF YOUR APP.
  */
 public class ApiApp extends Application {
+    /** HTTP client. */
+    public static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_2)           // uses HTTP protocol version 2 where possible
+        .followRedirects(HttpClient.Redirect.NORMAL)  // always redirects, except from HTTPS to HTTP
+        .build();                                     // builds and returns a HttpClient object
+
+    /** Google {@code Gson} object for parsing JSON-formatted strings. */
+    public static Gson GSON = new GsonBuilder()
+        .setPrettyPrinting()                          // enable nice output when printing
+        .create();                                    // builds and returns a Gson object
+
+
+
+
     Stage stage;
     Scene scene;
     VBox root;
