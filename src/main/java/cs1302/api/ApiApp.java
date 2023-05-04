@@ -22,7 +22,15 @@ import javafx.geometry.Orientation;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
-
+import javafx.event.EventHandler;
+import javafx.event.ActionEvent;
+import javafx.util.Duration;
+import javafx.stage.Modality;
+import java.io.FileInputStream;
+import java.util.Properties;
+import javafx.scene.control.TextArea;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.Image;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,9 +63,12 @@ public class ApiApp extends Application {
         .setPrettyPrinting()                          // enable nice output when printing
         .create();                                    // builds and returns a Gson object
 
-    private static final CITY_KEY;
+    private static final String CITY_KEY = "gOBBQcaVfcJd6pJLqQJ1VA==vx6Y5tWjkbZ23sVd";
     private static final String CITY_API = "https://api.api-ninjas.com/v1/city";
 
+
+    private static final String WEATHER_KEY = "0a35b43955554910b9d173026230205";
+    private static final String WEATHER_API = "http://api.weatherapi.com/v1/current.json";
     Stage stage;
     Scene scene;
     VBox root;
@@ -79,6 +90,15 @@ public class ApiApp extends Application {
     //Text
     private TextFlow body;
 
+    //Lat and Long
+    private double latitude
+
+    //Icon
+    private ImageView viewer;
+
+    //Weather info
+    Textflow weatherInfo;
+
     /**
      * Constructs an {@code ApiApp} object. This default (i.e., no argument)
      * constructor is executed in Step 2 of the JavaFX Application Life-Cycle.
@@ -99,15 +119,20 @@ public class ApiApp extends Application {
         this.texter = new HBox(8);
 
         //Text
-        this.body
+        this.body = new TextFlow();
 
+        //Icon
+        this.viewer = new ImageView();
+
+        //Weather info
+        this.weatherInfo = new TextFlow()
     } // ApiApp
 
 
     /** {@inheritDoc} */
     @Override
     public void init() {
-        root.getChildren().addAll(urlBox, texter, body);
+        root.getChildren().addAll(urlBox, texter, body, viewer, weatherInfo);
         Insets margin = new Insets(4, 4, 4, 4);
         //first row
         VBox.setMargin(urlBox, margin);
@@ -116,11 +141,21 @@ public class ApiApp extends Application {
         HBox.setHgrow(url, Priority.ALWAYS);
         //second row
         texter.getChildren().add(text);
-
-
         //body
+        this.body.setMaxWidth(420);
+        Text starter = new Text("City Weather!");
+        this.body.setContent(starter);
+        getForcast.setDisable(true);
 
+        //image
+
+        Runnable cities = () -> loadCity();
+        this.getCity.setOnAction(event -> runNow(cities));
+
+        Runnable weathery = () -> loadWeather();
+        this.getWeather.setOnAction(event -> runNow(weathery));
     }
+
     /** {@inheritDoc} */
     @Override
     public void start(Stage stage) {
@@ -128,7 +163,7 @@ public class ApiApp extends Application {
         this.stage = stage;
 
         // setup scene
-        scene = new Scene(root);
+        scene = new Scene(root, 640, 600);
         // setup stage
         stage.setTitle("City Weather!");
         stage.setScene(scene);
@@ -138,33 +173,22 @@ public class ApiApp extends Application {
 
     } // start
 
-    private void getCity() {
-        String configPath = "resources/config.properties";
-        // the following try-statement is called a try-with-resources statement
-        // see https://docs.oracle.com/javase/tutorial/essential/exceptions/tryResourceClose.html
-        try (FileInputStream configFileStream = new FileInputStream(configPath)) {
-            Properties config = new Properties();
-            config.load(configFileStream);
-            config.list(System.out);                                  // list all using standard out
-            CITY_KEY = config.getProperty("apininja.apikey");
-        } catch (IOException ioe) {
-            System.err.println(ioe);
-            ioe.printStackTrace();
-        } // try
-
+    private void loadCity() {
         try {
             this.getForcast.setDisable(true);
             this.getCity.setDisable(true);
+            Platform.runLater(() -> this.body.getChildren().clear());
             Platform.runLater(() -> text.setText("Getting City..."));
             // form URI
             String name = URLEncoder.encode(this.url.getText(), StandardCharsets.UTF_8);
+
             String query = String.format("?name=%s", name);
             this.uri = CITY_API + query;
             System.out.println(uri);
             //build request
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(uri))
-                .header("X-Our-Header-1", CITY_KEY)
+                .header("X-Api-Key", CITY_KEY)
                 .build();
             // send request / receive response in the form of a String
             HttpResponse<String> response = HTTP_CLIENT
@@ -173,37 +197,108 @@ public class ApiApp extends Application {
                 throw new IOException(response.toString());
             } // if
             // get request body (the content we requested)
-            String jsonString = response.body();
+            String json = response.body();
             // parse the JSON-formatted string using GSON
-            ItunesResponse itunesResponse = GSON
-                .fromJson(jsonString, cs1302.gallery.ItunesResponse.class);
+            //CityResponse[] cityResponse = CityResponse.fromJson(json);
+            CityResponse[] cityResponse = GSON
+              .fromJson(json, CityResponse[].class);
 
-
-
-            printItunesResponse(itunesResponse);
             this.getForcast.setDisable(false);
             this.getCity.setDisable(false);
+            this.latitude = cityResponse[0].latitude;
+            this.longitude = cityResponse[0].longitude;
+            printCity(cityResponse);
             Platform.runLater(() -> text.setText(uri));
         } catch (IOException | InterruptedException | IllegalArgumentException e) {
             // either:
             // 1. an I/O error occurred when sending or receiving;
             // 2. the operation was interrupted; or
             // 3. the Image class could not load the image.
-            if (imageArray[0].getImage().getUrl().equals("file:" + DEFAULT_IMG)) {
-                this.getImages.setDisable(false);
-            } else {
-                this.play.setDisable(false);
-                this.getImages.setDisable(false);
-            }
             Platform.runLater(() -> {
-                text.setText("Last attempt to get images failed...");
-                this.loadBar.setProgress(1);
+                text.setText("Last attempt to get city failed...");
                 alertError(e, this.uri);
+                this.getForcast.setDisable(false);
+                this.getCity.setDisable(false);
             });
         } // try
+    }
+
+    private void printCity(CityResponse[] cityResponse) {
+        Platform.runLater(() -> body.getChildren().add(new Text("City: " + cityResponse[0].name
+        + "\nLatitude: " + cityResponse[0].latitude + "\nLongitude: " + cityResponse[0].longitude
+        + "\nPopulation: " + cityResponse[0].population)));
+
+    }
+
+
+    private void loadWeather() {
+        try {
+            this.getForcast.setDisable(true);
+            this.getCity.setDisable(true);
+
+            Platform.runLater(() -> text.setText("Getting Weather..."));
+            // form URI
+            String q = URLEncoder.encode(latitude + "," + longitude,
+            StandardCharsets.UTF_8);
+            String key = URLEncoder.encode(WEATHER_KEY ,StandardCharsets.UTF_8);
+
+            String query = String.format("?key=%s&q=%s", key, q);
+            this.uri = WEATHER_API + query;
+            System.out.println(uri);
+            //build request
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(uri))
+                .build();
+            // send request / receive response in the form of a String
+            HttpResponse<String> response = HTTP_CLIENT
+                .send(request, BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IOException(response.toString());
+            } // if
+            // get request body (the content we requested)
+            String json = response.body();
+            // parse the JSON-formatted string using GSON
+            //CityResponse[] cityResponse = CityResponse.fromJson(json);
+            WeatherResponse weatherResponse = GSON
+              .fromJson(json, WeatherResponse.class);
+
+            this.getForcast.setDisable(false);
+            this.getCity.setDisable(false);
+            printWeather(weatherResponse);
+            Platform.runLater(() -> text.setText(uri));
+        } catch (IOException | InterruptedException | IllegalArgumentException e) {
+            // either:
+            // 1. an I/O error occurred when sending or receiving;
+            // 2. the operation was interrupted; or
+            // 3. the Image class could not load the image.
+            Platform.runLater(() -> {
+                text.setText("Last attempt to get city failed...");
+                alertError(e, this.uri);
+                this.getForcast.setDisable(false);
+                this.getCity.setDisable(false);
+            });
+        } // try
+    }
+
+
+    private void printWeather(WeatherResponse weather) {
+        Image icon = new Image(weather.current.condition.icon);
 
 
     }
+
+
+    public static void alertError(Throwable cause, String url) {
+        TextArea text = new TextArea(url + "\n\n"  + cause.toString());
+        text.setEditable(false);
+        text.setWrapText(true);
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.getDialogPane().setContent(text);
+        alert.setResizable(true);
+        alert.initModality(Modality.APPLICATION_MODAL);
+        alert.showAndWait();
+    } // alertError
+
 
     /**
      * Creates and immediately starts a new daemon thread that executes
