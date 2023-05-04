@@ -31,6 +31,8 @@ import java.util.Properties;
 import javafx.scene.control.TextArea;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
+import javafx.scene.layout.Region;
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -125,7 +127,7 @@ public class ApiApp extends Application {
         this.viewer = new ImageView();
 
         //Weather info
-        this.weatherInfo = new TextFlow()
+        this.weatherInfo = new TextFlow();
     } // ApiApp
 
 
@@ -145,10 +147,14 @@ public class ApiApp extends Application {
         this.body.setMaxWidth(420);
         Text starter = new Text("City Weather!");
         this.body.setContent(starter);
+        this.body.setCenterShape(true);
         getForcast.setDisable(true);
 
         //image
+        this.viewer.setImage(new Image("file:resource/default_img.png"));
 
+        // weatherinfo
+        this.weatherInfo.setMaxWidth(300);
         Runnable cities = () -> loadCity();
         this.getCity.setOnAction(event -> runNow(cities));
 
