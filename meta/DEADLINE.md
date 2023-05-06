@@ -14,18 +14,28 @@ Markdown is transformed into nice looking HTML.
 
 > **Also, include the GitHub `https` URL to your repository.**
 
-TODO WRITE / REPLACE
+The app that I created asks for the user to input any city into the search box.
+    Once they input their city of choice, they can press the "Get City"
+    button so that the app displays the city location information.
+    After that, the user can press the "Get Weather" button to get
+    the current weather for that city.
 
 ## Part 2: New
 
 > What is something new and/or exciting that you learned from working
 > on this project?
 
-TODO WRITE / REPLACE
+I learned how to use my own GitHub account and create a new private
+    repository.
 
 ## Part 3: Retrospect
 
 > If you could start the project over from scratch, what do
 > you think might do differently and why?
 
-TODO WRITE / REPLACE
+I would try to read more about my APIs first before I work on
+    the project because there were instances where I had
+    to scrap some ideas because the APIs did not work with my app.
+    For example, I really wanted to use an API to output video. However,
+    sound doesn't work on the app, and I spent so much time trying to
+    get the idea to work.
