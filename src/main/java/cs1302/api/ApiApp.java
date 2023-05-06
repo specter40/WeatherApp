@@ -32,8 +32,9 @@ import javafx.scene.control.TextArea;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
 import javafx.scene.layout.Region;
-
-
+import java.net.URLDecoder;
+import javafx.scene.text.TextAlignment;
+import javafx.scene.paint.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -49,9 +50,9 @@ import javafx.scene.control.Alert.AlertType;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-
 /**
- * REPLACE WITH NON-SHOUTING DESCRIPTION OF YOUR APP.
+ * The app takes in a city from the user and prints out its information relating to the location.
+ * Then it uses the latitude and longitude of that city to find the weather.
  */
 public class ApiApp extends Application {
     /** HTTP client. */
@@ -77,7 +78,7 @@ public class ApiApp extends Application {
 
     //Top row
     private Label search;
-    private Button getForcast;
+    private Button getWeather;
     private HBox urlBox;
     private Button getCity;
 
@@ -89,17 +90,19 @@ public class ApiApp extends Application {
     private HBox texter;
     private Label text;
 
-    //Text
+    //City
+    private TextFlow cityTitle;
     private TextFlow body;
 
     //Lat and Long
-    private double latitude
+    private double latitude;
+    private double longitude;
 
     //Icon
-    private ImageView viewer;
+    private TextFlow weatherTitle;
 
     //Weather info
-    Textflow weatherInfo;
+    TextFlow weatherInfo;
 
     /**
      * Constructs an {@code ApiApp} object. This default (i.e., no argument)
@@ -108,7 +111,7 @@ public class ApiApp extends Application {
     public ApiApp() {
         //first row
         root = new VBox();
-        getForcast = new Button("Get Forcast");
+        getWeather = new Button("Get Weather");
         this.search = new Label("Search:");
         Font sizer = new Font(14);
         this.search.setFont(sizer);
@@ -121,40 +124,52 @@ public class ApiApp extends Application {
         this.texter = new HBox(8);
 
         //Text
+        this.cityTitle = new TextFlow();
         this.body = new TextFlow();
 
         //Icon
-        this.viewer = new ImageView();
+        this.weatherTitle = new TextFlow();
+
 
         //Weather info
-        this.weatherInfo = new TextFlow();
+        this.weatherInfo = new TextFlow(new Text("No weather provided."));
     } // ApiApp
 
 
     /** {@inheritDoc} */
     @Override
     public void init() {
-        root.getChildren().addAll(urlBox, texter, body, viewer, weatherInfo);
+        root.getChildren().addAll(urlBox, texter, cityTitle, body, weatherTitle, weatherInfo);
         Insets margin = new Insets(4, 4, 4, 4);
+        Insets set = new Insets(4, 4, 60, 4);
         //first row
         VBox.setMargin(urlBox, margin);
         VBox.setMargin(texter, margin);
-        urlBox.getChildren().addAll(getForcast, search, url, getCity);
+        VBox.setMargin(weatherInfo, margin);
+        VBox.setMargin(body, set);
+        urlBox.getChildren().addAll(getWeather, search, url, getCity);
         HBox.setHgrow(url, Priority.ALWAYS);
         //second row
         texter.getChildren().add(text);
         //body
+        VBox.setMargin(cityTitle, margin);
+        Font title = new Font(20);
+        Text city1 = new Text("City");
+        city1.setFont(title);
+        this.cityTitle.getChildren().add(city1);
+        this.cityTitle.setTextAlignment(TextAlignment.CENTER);
         this.body.setMaxWidth(420);
-        Text starter = new Text("City Weather!");
-        this.body.setContent(starter);
-        this.body.setCenterShape(true);
-        getForcast.setDisable(true);
-
-        //image
-        this.viewer.setImage(new Image("file:resource/default_img.png"));
+        Text starter = new Text("No city provided yet");
+        this.body.getChildren().add(starter);
+        this.getWeather.setDisable(true);
 
         // weatherinfo
+        Text weather1 = new Text("Weather");
+        weather1.setFont(title);
+        this.weatherTitle.getChildren().add(weather1);
+        this.weatherTitle.setTextAlignment(TextAlignment.CENTER);
         this.weatherInfo.setMaxWidth(300);
+
         Runnable cities = () -> loadCity();
         this.getCity.setOnAction(event -> runNow(cities));
 
@@ -169,21 +184,29 @@ public class ApiApp extends Application {
         this.stage = stage;
 
         // setup scene
-        scene = new Scene(root, 640, 600);
+        scene = new Scene(root, 640, 300);
         // setup stage
         stage.setTitle("City Weather!");
         stage.setScene(scene);
         stage.setOnCloseRequest(event -> Platform.exit());
         stage.sizeToScene();
         stage.show();
-
+        Platform.runLater(() -> this.stage.setResizable(false));
     } // start
 
+
+    /**
+     * Creates a URL for the HTTP response and calls the API for the city info.
+     *
+     */
     private void loadCity() {
         try {
-            this.getForcast.setDisable(true);
+            Insets margin = new Insets(4, 4, 14, 4);
+            Insets set = new Insets(4, 4, 75, 4);
+            this.getWeather.setDisable(true);
             this.getCity.setDisable(true);
             Platform.runLater(() -> this.body.getChildren().clear());
+            Platform.runLater(() -> VBox.setMargin(body, set));
             Platform.runLater(() -> text.setText("Getting City..."));
             // form URI
             String name = URLEncoder.encode(this.url.getText(), StandardCharsets.UTF_8);
@@ -208,13 +231,13 @@ public class ApiApp extends Application {
             //CityResponse[] cityResponse = CityResponse.fromJson(json);
             CityResponse[] cityResponse = GSON
               .fromJson(json, CityResponse[].class);
-
-            this.getForcast.setDisable(false);
+            this.getWeather.setDisable(false);
             this.getCity.setDisable(false);
             this.latitude = cityResponse[0].latitude;
             this.longitude = cityResponse[0].longitude;
             printCity(cityResponse);
             Platform.runLater(() -> text.setText(uri));
+            Platform.runLater(() -> VBox.setMargin(body, margin));
         } catch (IOException | InterruptedException | IllegalArgumentException e) {
             // either:
             // 1. an I/O error occurred when sending or receiving;
@@ -223,32 +246,48 @@ public class ApiApp extends Application {
             Platform.runLater(() -> {
                 text.setText("Last attempt to get city failed...");
                 alertError(e, this.uri);
-                this.getForcast.setDisable(false);
+                this.getWeather.setDisable(false);
                 this.getCity.setDisable(false);
             });
         } // try
     }
 
+    /**
+     * Prints the city response.
+     *
+     * @param cityResponse the reponse used to output the info.
+     */
     private void printCity(CityResponse[] cityResponse) {
         Platform.runLater(() -> body.getChildren().add(new Text("City: " + cityResponse[0].name
-        + "\nLatitude: " + cityResponse[0].latitude + "\nLongitude: " + cityResponse[0].longitude
-        + "\nPopulation: " + cityResponse[0].population)));
+            + "\nLatitude: " + cityResponse[0].latitude + "\nLongitude: "
+            + cityResponse[0].longitude
+            + "\nPopulation: " + cityResponse[0].population)));
 
     }
 
 
+    /**
+     * Creates a URL for the HTTP response and calls the API for the weather info.
+     *
+     */
     private void loadWeather() {
         try {
-            this.getForcast.setDisable(true);
+            this.getWeather.setDisable(true);
             this.getCity.setDisable(true);
-
+            Platform.runLater(() -> weatherInfo.getChildren().clear());
             Platform.runLater(() -> text.setText("Getting Weather..."));
             // form URI
-            String q = URLEncoder.encode(latitude + "," + longitude,
-            StandardCharsets.UTF_8);
-            String key = URLEncoder.encode(WEATHER_KEY ,StandardCharsets.UTF_8);
+            double lat = this.latitude;
+            double lon = this.longitude;
 
-            String query = String.format("?key=%s&q=%s", key, q);
+
+            String comma = URLEncoder.encode(",", StandardCharsets.UTF_8);
+            String q = lat + comma + lon;
+            //String q = URLEncoder.encode(lat + "," + lon, StandardCharsets.UTF_8);
+            String aqi = URLEncoder.encode("no", StandardCharsets.UTF_8);
+            String key = URLEncoder.encode(WEATHER_KEY, StandardCharsets.UTF_8);
+
+            String query = String.format("?key=%s&q=%s&aqi=%s", key, q, aqi);
             this.uri = WEATHER_API + query;
             System.out.println(uri);
             //build request
@@ -266,34 +305,46 @@ public class ApiApp extends Application {
             // parse the JSON-formatted string using GSON
             //CityResponse[] cityResponse = CityResponse.fromJson(json);
             WeatherResponse weatherResponse = GSON
-              .fromJson(json, WeatherResponse.class);
+                .fromJson(json, WeatherResponse.class);
 
-            this.getForcast.setDisable(false);
+            this.getWeather.setDisable(false);
             this.getCity.setDisable(false);
             printWeather(weatherResponse);
-            Platform.runLater(() -> text.setText(uri));
         } catch (IOException | InterruptedException | IllegalArgumentException e) {
             // either:
             // 1. an I/O error occurred when sending or receiving;
             // 2. the operation was interrupted; or
             // 3. the Image class could not load the image.
             Platform.runLater(() -> {
-                text.setText("Last attempt to get city failed...");
+                text.setText("Last attempt to get weather failed...");
                 alertError(e, this.uri);
-                this.getForcast.setDisable(false);
+                this.getWeather.setDisable(false);
                 this.getCity.setDisable(false);
             });
         } // try
     }
 
-
+    /**
+     * Prints the weather response.
+     *
+     * @param weather the reponse used to output the info.
+     */
     private void printWeather(WeatherResponse weather) {
-        Image icon = new Image(weather.current.condition.icon);
-
-
+        //String real = weather.current.condition.icon.substring(2);
+        //Platform.runLater(() -> System.out.println(real));
+        //Image icony = new Image(real);
+        //Platform.runLater(() -> this.viewer.setImage(icony));
+        Platform.runLater(() -> this.weatherInfo.getChildren().add(new Text("Weather: "
+            + weather.current.condition.text + "\nTemperature (F): " + weather.current.tempF
+            + "°\nLast Updated: " + weather.current.lastUpdated)));
+        Platform.runLater(() -> this.text.setText("Weather Loaded"));
     }
 
-
+     /**
+      * Show a modal error alert based on {@code cause}.
+      * @param cause a {@link java.lang.Throwable Throwable} that caused the alert
+      * @param url the url that caused the error.
+      */
     public static void alertError(Throwable cause, String url) {
         TextArea text = new TextArea(url + "\n\n"  + cause.toString());
         text.setEditable(false);

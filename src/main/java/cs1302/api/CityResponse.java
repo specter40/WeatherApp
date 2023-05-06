@@ -1,4 +1,5 @@
 package cs1302.api;
+
 import com.google.gson.Gson;
 
 /**
