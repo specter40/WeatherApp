@@ -20,6 +20,8 @@ The app that I created asks for the user to input any city into the search box.
     After that, the user can press the "Get Weather" button to get
     the current weather for that city.
 
+    GitHub URL: https://github.com/specter40/cs1302-omega
+
 ## Part 2: New
 
 > What is something new and/or exciting that you learned from working
